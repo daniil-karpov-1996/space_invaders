@@ -5,7 +5,10 @@ from random import randint, choice
 
 pygame.init()
 pygame.display.set_caption('Space invaders')
-enemy = ['enemy_ship1.png', 'enemy_ship2.png', 'enemy_ship3.png']
+enemy = ['enemy_ship1.png', 'enemy_ship2.png', 'enemy_ship3.png', 'enemy_ship1.png', 'enemy_ship2.png', 'enemy_ship1.png']
+enemy5_10 = ['enemy_ship1.png', 'enemy_ship2.png', 'enemy_ship2.png', 'enemy_ship3.png']
+enemy10_15 = ['enemy_ship1.png', 'enemy_ship2.png', 'enemy_ship3.png', 'enemy_ship3.png']
+enemy15 = ['enemy_ship3.png']
 
 explosion = ['image_part_001.png', 'image_part_002.png', 'image_part_003.png', 'image_part_004.png', 'image_part_005.png',
              'image_part_006.png', 'image_part_007.png', 'image_part_008.png', 'image_part_009.png', 'image_part_010.png',
@@ -16,18 +19,10 @@ player_hp = 500
 score = 0
 lives = 5
 
+enemy_count = 5
+
 pause = False
 pygame.time.set_timer(pygame.USEREVENT, timer)
-
-
-class Game:
-    def __init__(self):
-        pass
-
-    def collide(self):
-        for i in enemy_sprites:
-            pass
-
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, filename, group):
@@ -42,11 +37,13 @@ class Enemy(pygame.sprite.Sprite):
         elif filename == 'enemy_ship3.png':
             self.hp = 200
             self.score = 100
+        self.hp = int(self.hp + (25 * wave))
         self.counter_shot = 50
         self.shot_speed = 1
         self.image = pygame.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect()
         self.rect.x = x
+        self.death = 0
         self.rect.y = -100
         self.speed_enemy = 3
         self.add(group)
@@ -54,7 +51,7 @@ class Enemy(pygame.sprite.Sprite):
 
     def update(self, *args):
         self.counter_shot -= self.shot_speed
-        global player_hp, score, lives
+        global player_hp, score, lives, enemy_count, timer
         if self.rect.y + self.speed_enemy < 700:
             self.rect.y += self.speed_enemy
         else:
@@ -72,11 +69,13 @@ class Enemy(pygame.sprite.Sprite):
                 expl = Explosion((self.rect.x + 50, self.rect.y + 50), 'small')
                 explosions.append(expl)
                 all_sprites.add(expl)
-                if self.hp <= 0:
+                if self.hp <= 0 and self.death == 0:
+                    self.death = 1
                     expl = Explosion((self.rect.x + 50, self.rect.y + 50), 'lg')
                     explosions.append(expl)
                     all_sprites.add(expl)
                     score += self.score
+                    enemy_count -=1
                     self.kill()
                 shots[i1].delet()
                 shots[i1] = '.'
@@ -84,8 +83,10 @@ class Enemy(pygame.sprite.Sprite):
         while '.' in shots:
             shots.remove('.')
 
-        if self.rect.x < player_x + 50 < self.rect.x + 100 and self.rect.y < player_y + 50 < self.rect.y + 100:
+        if self.rect.x < player_x + 50 < self.rect.x + 100 and self.rect.y < player_y + 50 < self.rect.y + 100 and self.death == 0:
             player_hp -= 50
+            self.death = 1
+            enemy_count -=1
             score += self.score
             expl = Explosion((self.rect.x + 50, self.rect.y + 50), 'lg')
             explosions.append(expl)
@@ -183,7 +184,14 @@ class Shot:
 
 
 def createship(group):
-    name = choice(enemy)
+    if wave < 5:
+        name = choice(enemy)
+    elif 5 <= wave <= 10:
+        name = choice(enemy5_10)
+    elif 10 < wave <= 15:
+        name = choice(enemy10_15)
+    else:
+        name = choice(enemy15)
     x = randint(100, 800)
     return Enemy(x, name, group)
 
@@ -197,6 +205,10 @@ def load_image(name, colorkey=None):
     image = pygame.image.load(fullname)
 
     return image
+
+def ship_upgrade():
+    global ship_lvl
+    ship_lvl += 1
 
 
 def s():
@@ -224,7 +236,6 @@ explosions = []
 sprite.rect.x = 5
 sprite.rect.y = 550
 image = pygame.transform.scale(image, (1000, 700))
-board = Game()
 screen = pygame.display.set_mode((1300, 700))
 
 enemy_gr = pygame.sprite.Group()
@@ -245,6 +256,9 @@ text2_y = 160
 text3 = font.render("{}".format('Lives:'), True, (255, 0, 0))
 text3_x = 1040
 text3_y = 220
+text4 = font.render("Enemy: {}".format(enemy_count), True, (255, 0, 0))
+text4_x = 1040
+text4_y = 280
 
 global shots
 shots = []
@@ -253,8 +267,11 @@ screen.blit(image, (0, 0))
 clock = pygame.time.Clock()
 fps = 60
 speed = 10
+global ship_lvl
+ship_lvl = 1
 global damage
 damage = 50
+defence = 0
 global damage_enemy
 damage_enemy = 10
 counter_shot = 100
@@ -280,13 +297,24 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.USEREVENT and not pause:
-            createship(enemy_gr)
+            for i in range(wave // 3 + 1):
+                createship(enemy_gr)
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_p:
                 if not pause:
                     pause = True
                 else:
                     pause = False
+            if event.key == pygame.K_q:
+                if ship_lvl == 1:
+                    sprite.image = load_image("spaceship_3.png")
+                    defence = 10
+                else:
+                    sprite.image = load_image("spaceship_2.png")
+                    defence = 20
+                ship_upgrade()
+                sprite.image = pygame.transform.scale(sprite.image, (100, 100))
+
 
     keys = pygame.key.get_pressed()
     if pause:
@@ -294,28 +322,48 @@ while running:
     if keys[pygame.K_LEFT]:
         if sprite.rect.x - speed > 0:
             sprite.rect.x -= speed
+
+
     if keys[pygame.K_RIGHT]:
         if sprite.rect.x + speed < 900:
             sprite.rect.x += speed
+
+
     if keys[pygame.K_UP]:
         if sprite.rect.y - speed > 0:
             sprite.rect.y -= speed
+
+
     if keys[pygame.K_DOWN]:
         if sprite.rect.y + speed < 610:
             sprite.rect.y += speed
-    if keys[pygame.K_q]:
-        sprite.image = load_image("spaceship_2.png")
-        sprite.image = pygame.transform.scale(sprite.image, (100, 100))
+
+
 
     if keys[pygame.K_w]:
         if counter_shot < 0:
-            shot = Shot(sprite.rect.x, sprite.rect.y, -10)
-            shots.append(shot)
-            shot = Shot(sprite.rect.x - 20, sprite.rect.y, -10)
-            shots.append(shot)
-            shot = Shot(sprite.rect.x + 20, sprite.rect.y, -10)
-            shots.append(shot)
+            if ship_lvl == 1:
+                shot = Shot(sprite.rect.x, sprite.rect.y, -10)
+                shots.append(shot)
+            elif ship_lvl == 2:
+                shot = Shot(sprite.rect.x - 10, sprite.rect.y, -10)
+                shots.append(shot)
+                shot = Shot(sprite.rect.x + 10, sprite.rect.y, -10)
+                shots.append(shot)
+            else:
+                shot = Shot(sprite.rect.x, sprite.rect.y, -10)
+                shots.append(shot)
+                shot = Shot(sprite.rect.x - 20, sprite.rect.y, -10)
+                shots.append(shot)
+                shot = Shot(sprite.rect.x + 20, sprite.rect.y, -10)
+                shots.append(shot)
             counter_shot = 100
+
+    if enemy_count == 0:
+        wave += 1
+        enemy_count = 5 * wave
+        damage_enemy += 5
+
     s()
     player_x, player_y = sprite.rect.x, sprite.rect.y
 
@@ -328,14 +376,16 @@ while running:
                      (1000, 700), 10)
 
     text = font.render("Score: {}".format(score), True, (255, 0, 0))
-    text1 = font.render("{}".format('Wave:'), True, (255, 0, 0))
+    text1 = font.render("Wave: {}".format(wave), True, (255, 0, 0))
     text2 = font.render("Health: {}".format(player_hp), True, (255, 0, 0))
     text3 = font.render("Lives: {}".format(lives), True, (255, 0, 0))
+    text4 = font.render("Enemy: {}".format(enemy_count), True, (255, 0, 0))
 
     screen.blit(text, (text_x, text_y))
     screen.blit(text1, (text1_x, text1_y))
     screen.blit(text2, (text2_x, text2_y))
     screen.blit(text3, (text3_x, text3_y))
+    screen.blit(text4, (text4_x, text4_y))
     for i in explosions:
         i.update()
 
@@ -344,7 +394,7 @@ while running:
             i = shots[i1]
             x, y, fly_speed = i.get_x(), i.get_y(), i.get_speed()
             if sprite.rect.x < x < sprite.rect.x + 100 and sprite.rect.y < y < sprite.rect.y + 100 and fly_speed > 0:
-                player_hp -= damage_enemy
+                player_hp -= int((damage_enemy - defence) * (100 - defence) / 100)
                 expl = Explosion((sprite.rect.x + 50, sprite.rect.y + 50), 'small')
                 explosions.append(expl)
                 all_sprites.add(expl)
